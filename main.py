@@ -15,8 +15,8 @@ def getAndFormat(userFile):
     curWorDir = os.getcwd()
 
     formatted_DF_Columns = ["Licensor", "Date", "Invoice Id", "Item Description", "Item Identifier",
-                            "Affinity Product Category", "Affinity Distribution Channel", "Retailer",
-                            "Shipping Country", "Number of Units", "Price Per Unit",
+                            "Affinity Product Category", "Affinity Distribution Channel", "Retailer", "Customer",
+                            "Shipping Country", "Shipping Postal Code", "Number of Units", "Price Per Unit",
                             "Gross Sales", "Royalties", "Licensed_Or_Not"]
 
     # initialize data frame that will hold formatted data
@@ -29,7 +29,7 @@ def getAndFormat(userFile):
     row_count = df.shape[0]
 
     i = 0
-    while i < row_count - 1:
+    while i < row_count :
         j = 0
         while j < column_count:
             # Match each column of data frame with correct data specified by affinity licensing
@@ -51,14 +51,22 @@ def getAndFormat(userFile):
             elif df_columns[j] == "Retailer":
                 formatted_Order_DataFrame['Retailer'].values[i] = "Greek Clothing Co LLC"
 
+            elif df_columns[j] == "Last Name":
+                formatted_Order_DataFrame['Customer'].values[i] = df.loc[i]["Last Name"]
+
             elif df_columns[j] == "Country Code":
                 formatted_Order_DataFrame['Shipping Country'].values[i] = df.loc[i]["Country Code"]
+
+            elif df_columns[j] == "Postcode":
+                formatted_Order_DataFrame['Shipping Postal Code'].values[i] = df.loc[i]["Postcode"]
 
             elif df_columns[j] == "Quantity":
                 formatted_Order_DataFrame['Number of Units'].values[i] = df.loc[i]["Quantity"]
 
             elif df_columns[j] == "Item Cost":
                 formatted_Order_DataFrame['Price Per Unit'].values[i] = df.loc[i]["Item Cost"]
+                formatted_Order_DataFrame['Affinity Distribution Channel'].values[i] = "Internet"
+                formatted_Order_DataFrame['Retailer'].values[i] = "Greek Clothing Co LLC"
 
             elif df_columns[j] == "Order Item Metadata":
                 metaData = df.loc[i][j]
@@ -74,7 +82,8 @@ def getAndFormat(userFile):
             j += 1
         i += 1
     calculate_gross_sales(formatted_Order_DataFrame)
-    writeToFile(formatted_Order_DataFrame)
+    separateLicensed_Nonlicensed(formatted_Order_DataFrame)
+    # writeToFile(formatted_Order_DataFrame)
 
 
 # parse group name from metadata
@@ -94,21 +103,6 @@ def productMetaDataParser(metaData):
 
         i += 1
     return "none"
-
-
-# takes a dataframe and writes it to a file
-def writeToFile(formatted_data):
-    # get current date for file name
-    today = date.today()
-
-    # getting current working directory to use for creating file path for ordered data DataFrame
-    curWorDir = os.getcwd()
-    # order_data_file = curWorDir + "/" + "Formatted_Order_Data-" + str(today)
-    order_data_file = "/home/jacksonoah/Desktop/Work/GreekClothingCo/2020Q3/" + "Formatted_Order_Data-" + str(today)
-
-    # write formatted data to new csv file
-    formatted_data.to_csv(order_data_file, sep=',', encoding='utf-8', index=False)
-    # formatted_data.to_csv("/home/jacksonoah/Desktop/Work/GreekClothingCo/2020Q3", sep=',', encoding='utf-8', index=False)
 
 
 # calculate gross sale value for each sale
@@ -221,7 +215,7 @@ def checkIfLicensedGroup(groupName, df, index):
             global licensedGroupCounter
             licensedGroupCounter += 1
             flag = 1
-            #print("\nLicensedGroup: %s\nGroupName: %s\n" % (licensedGroups[i], groupName))
+            # print("\nLicensedGroup: %s\nGroupName: %s\n" % (licensedGroups[i], groupName))
             break
 
         i += 1
@@ -231,6 +225,57 @@ def checkIfLicensedGroup(groupName, df, index):
 
     if flag == 1:
         df['Licensed_Or_Not'].values[index] = "Yes"
+
+
+# check if group is licensed or not. If not then add to separate data frame and write to a different file
+# if it is a licensed group then write to normal output file
+def separateLicensed_Nonlicensed(dataFrame):
+    dataFrameColumns = ["Licensor", "Date", "Invoice Id", "Item Description", "Item Identifier",
+                        "Affinity Product Category", "Affinity Distribution Channel", "Retailer", "Customer",
+                        "Shipping Country", "Shipping Postal Code", "Number of Units", "Price Per Unit",
+                        "Gross Sales", "Royalties", "Licensed_Or_Not"]
+
+    # initialize data frame that will hold formatted data
+    licensedDF = pd.DataFrame(index=np.arange(1000), columns=dataFrameColumns)
+    nonLicensedDF = pd.DataFrame(index=np.arange(10000), columns=dataFrameColumns)
+
+    licensedIndex = 0
+    nonLicensedDIndex = 0
+
+    i = 0
+    row_count = dataFrame.shape[0]
+    while i < row_count:
+
+        if dataFrame['Licensed_Or_Not'].values[i] == 'Yes':
+            # then add to dataframe containing licensed groups
+            licensedDF.values[licensedIndex] = dataFrame.values[i]
+            licensedIndex += 1
+        else:
+            # otherwise add to nonLicensedDF
+            nonLicensedDF.values[nonLicensedDIndex] = dataFrame.values[i]
+            nonLicensedDIndex += 1
+
+        i += 1
+
+    writeToFile(licensedDF, "/home/jacksonoah/Desktop/Work/GreekClothingCo/2020Q3/Format_Licensed_NEW-")
+    writeToFile(nonLicensedDF, "/home/jacksonoah/Desktop/Work/GreekClothingCo/2020Q3/Format_NonLicensed_NEW-")
+
+
+# takes a dataframe and writes it to a file
+def writeToFile(formatted_data, fileName):
+    # get current date for file name
+    today = date.today()
+
+    # getting current working directory to use for creating file path for ordered data DataFrame
+    curWorDir = os.getcwd()
+    # order_data_file = curWorDir + "/" + "Formatted_Order_Data-" + str(today)
+    order_data_file = fileName + str(today)
+
+    # write formatted data to new csv file
+    formatted_data.to_csv(order_data_file, sep=',', encoding='utf-8', index=False)
+    # formatted_data.to_csv("/home/jacksonoah/Desktop/Work/GreekClothingCo/2020Q3", sep=',', encoding='utf-8',
+    # index=False)
+
 
 # Create GUI
 canvas = tk.Canvas(root, height=1000, width=1000, bg="#263D42")
