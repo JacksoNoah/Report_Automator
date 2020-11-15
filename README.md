@@ -1,2 +1,2 @@
 # Report_Automator
-Automates the gathering and analysis of order data for quarterly reports. 
+Automates the gathering and formatting of order data for quarterly reports. 
